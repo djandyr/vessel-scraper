@@ -53,45 +53,49 @@ try {
     $codeCount = 0;
 
     for ($x = 1; $x <= $totalPages; $x++) {
-
-        // Total number of IMO codes per page, to identify if we have reached the end of the results
-        // which have valid codes.
-        $codeCount = 0;
-
-        $cli->setHeader('User-Agent', getRandomUserAgent());
-        $crawler = $cli->request('GET', $url . "/sort:IMO/direction:desc/status:active/page:{$x}");
-
-        // Change proxy every 50 requests to prevent blocking
-        if ($x % (50 + 1) == 0) {
-            $crawler = $cli->request('GET', $url . "/sort:IMO/direction:desc/status:active/page:{$x}");
-        }
-
-        $crawler->filter('.filters_results_table > .mt-table table tr')->each(function ($tr) use ($csv, &$count, $x, $codeCount) {
-
-            global $codeCount;
-            $rows = array();
-
-            if($tr->count()) {
-                if (imoCode($tr->filter('td'))) {
-                    $rows[] = createRow($tr->filter('td'));
-                    $csv->insertAll($rows);
-                    $count += 1;
-                    $codeCount +=1;
-                }
-            }
-
-        });
+        parsePage($x, $cli, $url, $csv, $count, $progressBar);
 
         if($codeCount == 0) {
-            echo "No valid IMO codes can be found, gracefully exiting.\n";
-            exit();
+            parsePage($x, $cli, $url, $csv, $count, $progressBar);
         }
-
-        $progressBar->update($x);
     }
+
 } catch (\Exception $e) {
     echo "Unable to parse HTML " . $url;
     die();
+}
+
+function parsePage($x, $cli, $url, $csv, $count, $progressBar) {
+
+    // Total number of IMO codes per page, to identify if we have reached the end of the results
+    // which have valid codes.
+    $codeCount = 0;
+
+    $cli->setHeader('User-Agent', getRandomUserAgent());
+    $crawler = $cli->request('GET', $url . "/sort:IMO/direction:desc/status:active/page:{$x}");
+
+    // Change proxy every 50 requests to prevent blocking
+    if ($x % (50 + 1) == 0) {
+        $crawler = $cli->request('GET', $url . "/sort:IMO/direction:desc/status:active/page:{$x}");
+    }
+
+    $crawler->filter('.filters_results_table > .mt-table table tr')->each(function ($tr) use ($csv, &$count, $x, $codeCount) {
+
+        global $codeCount;
+        $rows = array();
+
+        if($tr->count()) {
+            if (imoCode($tr->filter('td'))) {
+                $rows[] = createRow($tr->filter('td'));
+                $csv->insertAll($rows);
+                $count += 1;
+                $codeCount +=1;
+            }
+        }
+
+    });
+
+    $progressBar->update($x);
 }
 
 $duration = microtime(true) - $start;
