@@ -13,6 +13,8 @@ git clone https://github.com/djandyr/vessel-scraper.git
 
 ### Install Dependencies
 
+Composer is requied to install dependencies https://getcomposer.org/download/
+
 ```
 php composer.phar install
 ```
