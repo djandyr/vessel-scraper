@@ -1,12 +1,11 @@
 <?php
 
-namespace VesselScraper\Crawler;
-
-require_once __DIR__ . '/abstract.php';
+namespace WarrantGroup\VesselScraper\Crawler;
 
 use Symfony\Component\DomCrawler\Crawler;
 use GuzzleHttp\Client as GuzzleClient;
 use GuzzleHttp\Psr7\Request;
+use WarrantGroup\VesselScraper\Crawler\CrawlerAbstract;
 
 class MarineTraffic extends CrawlerAbstract {
 
@@ -103,30 +102,6 @@ class MarineTraffic extends CrawlerAbstract {
             $code = trim($node->eq(1)->text());
             if(preg_match("/(?<=IMO: )(\d*)/", $code, $match)) {
                 if (is_numeric($match[0]) && strlen($match[0]) == 7) {
-                    return $match[0];
-                }
-            }
-        }
-
-        return null;
-    }
-
-    /**
-     * Parse ENI number
-     *
-     * European Vessel Identification Number) is a registration for ships capable of navigating on inland
-     * European waters. It is a unique, eight-digit identifier that is attached to a hull for its entire lifetime,
-     * independent of the vessel's current name or flag.
-     *
-     * @param $node
-     * @return string
-     */
-    protected function eniNumber($node)
-    {
-        if ($node->eq(1)->count()) {
-            $code = trim($node->eq(1)->text());
-            if(preg_match("/(?<=ENI: )(\d*)/", $code, $match)) {
-                if (is_numeric($match[0]) && strlen($match[0]) == 8) {
                     return $match[0];
                 }
             }

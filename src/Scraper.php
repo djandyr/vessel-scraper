@@ -1,44 +1,29 @@
 <?php
 
-namespace VesselScraper;
+namespace WarrantGroup\VesselScraper;
 
-require_once __DIR__ . '/vendor/autoload.php';
-require_once __DIR__ . '/crawler/marinetraffic.php';
-require_once __DIR__ . '/crawler/myshiptracking.php';
-
-use League\Csv\Writer;
 use GuzzleHttp\Client as GuzzleClient;
-use VesselScraper\Crawler\CrawlerAbstract;
-use VesselScraper\Crawler\MyShipTracking;
-
-if (!ini_get("auto_detect_line_endings")) {
-    ini_set("auto_detect_line_endings", '1');
-}
+use WarrantGroup\VesselScraper\Crawler\CrawlerAbstract;
+use WarrantGroup\VesselScraper\Crawler\MarineTraffic;
+use WarrantGroup\VesselScraper\Crawler\MyShipTracking;
+use WarrantGroup\VesselScraper\Csv\Writer;
 
 error_reporting(-1);
 ini_set('display_errors', true);
 set_time_limit(0);
 
-class VesselScraper
+class Scraper
 {
     protected $csv;
     protected $progressBar;
-    protected $stats = array(
-        'count'     => 0,
-        'start'     => 0,
-        'duration'  => 0,
-        'memory'    => 0
-    );
 
     protected $proxy = '';
     protected $config = array(
         'enable-proxy' => false
     );
 
-    public function __construct()
+    public function __construct($name)
     {
-        $this->stats['start'] = microtime(true);
-
         $options = array(
             'defaults' =>
                 array(
@@ -57,15 +42,13 @@ class VesselScraper
         }
 
         $this->client = new GuzzleClient($options);
-
-        $this->csvFileName = realpath(dirname(__FILE__)) . '/vessel.csv';
-        $this->csv = $this->buildCsv();
+        $this->crawler = $this->createCrawler($name);
     }
 
     public function run() {
 
         try {
-            $this->crawler = new MyShipTracking($this->client);
+            $this->csv = new Writer();
             $totalPages = $this->crawler->totalPages();
 
             $this->progressBar = new \ProgressBar\Manager(0, $totalPages);
@@ -73,12 +56,16 @@ class VesselScraper
             $pool = new \GuzzleHttp\Pool($this->client, $this->crawler->doRequests($totalPages), [
                 'concurrency' => 40,
                 'fulfilled' => function ($response, $index) {
+
                     $html = $response->getBody()->getContents();
+
                     if(!empty($html)) {
                         $rows = $this->crawler->filter($html);
-                        $this->addToCsv($rows);
+                        $this->csv->write($rows);
                         $this->progressBar->update($index);
                     }
+
+                    unset($response);
                     unset($html);
                     unset($rows);
                 },
@@ -94,42 +81,29 @@ class VesselScraper
             $response = $e->getMessage();
             echo $response;
         }
+    }
 
-        $this->stats['duration'] = microtime(true) - $this->stats['start'];
-        $this->stats['memory'] = memory_get_peak_usage(true);
-
-        $this->outputStats();
+    public function getCsv() {
+        return $this->csv;
     }
 
     /**
-     * @param $rows
+     * Factory
+     *
+     * @param $name
+     * @return MarineTraffic|MyShipTracking
      */
-    protected function addToCsv($rows) {
-        if(count($rows) > 0) {
-            $this->csv->insertAll($rows);
+    protected function createCrawler($name) {
+
+        switch($name) {
+            case 'marinetraffic' :
+                return new MarineTraffic($this->client);
+                break;
+
+            case 'myshiptracking' :
+            default:
+                return new MyShipTracking($this->client);
+                break;
         }
     }
-
-    /**
-     *
-     * @return static
-     */
-    protected function buildCsv()
-    {
-        $filePath = realpath(dirname(__FILE__)) . '/vessel.csv';
-        $csv = Writer::createFromPath(new \SplFileObject($filePath, 'w+'), 'w');
-        $csv->insertOne(["imo", "eni", "mmsi", "name", "flag", "type"]);
-        return $csv;
-    }
-
-    /**
-     *  Output Stats
-     */
-    protected function outputStats() {
-        echo 'Added ' . $this->stats['count'] . ' vessels in ' . $this->stats['duration'] . ' seconds using ' . $this->stats['memory'], ' bytes' . PHP_EOL;
-        echo 'Created ' . $this->csvFileName . PHP_EOL;
-    }
 }
-
-$vesselScraper = new VesselScraper();
-$vesselScraper->run();

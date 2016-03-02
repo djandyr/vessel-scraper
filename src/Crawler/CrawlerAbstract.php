@@ -1,6 +1,7 @@
 <?php
 
-namespace VesselScraper\Crawler;
+namespace WarrantGroup\VesselScraper\Crawler;
+
 use Symfony\Component\DomCrawler\Crawler;
 
 /**
@@ -54,7 +55,6 @@ abstract class CrawlerAbstract {
     protected function createRow($node) {
         return array(
             'imo' => $this->imoCode($node),
-            'eni' => $this->eniNumber($node),
             'mmsi' => $this->mmsi($node),
             'name' => $this->vesselName($node),
             'flag' => $this->flagCode($node),
@@ -62,10 +62,10 @@ abstract class CrawlerAbstract {
         );
     }
 
+
     abstract protected function totalPages();
     abstract protected function doRequests($total);
     abstract protected function imoCode($node);
-    abstract protected function eniNumber($node);
     abstract protected function mmsi($node);
     abstract protected function vesselName($node);
     abstract protected function flagCode($node);
