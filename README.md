@@ -15,10 +15,10 @@ git clone https://github.com/djandyr/vessel-scraper.git
 
 ```
 php composer.phar install
+```
 
 ### Run Scraper
 
-```
 php console.php scrape:vessels
 
 A `vessel.csv` will be created in the root directory.
